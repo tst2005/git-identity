@@ -127,13 +127,16 @@ main() {
 			*) cmd="--$cmd"
 		esac
 		case "$cmd" in
-			--list)		shift; gi_list ; return 0 ;;
-			--add)		shift; gi_add   "$1" "$2" ; shift 2; return 0 ;; # allow --add x x --add y y ... ?
-			--count)	shift; gi_count           ; return 0 ;;
-			--get)		shift; gi_get   "$1"; shift; return 0 ;;
-			--use|--setup)	shift; gi_setup "$1"; return $? ;;
-			--check)	shift; gi_check ;;
-			--whoami)	shift; gi_whoami ; return $? ;;
+			--ls) cmd="--list" ;;
+		esac
+		case "$cmd" in
+			--list)		gi_list ; return 0 ;;
+			--add)		gi_add   "$2" "$3"   ; shift 2; return 0 ;; # allow --add x x --add y y ... ?
+			--count)	gi_count             ; return 0 ;;
+			--get)		gi_get   "$2"; shift;  return 0 ;;
+			--use|--setup)	gi_setup "$2"; shift;           ;;
+			--check)	gi_check     ;        return $? ;;
+			--whoami)	gi_whoami ;;
 		esac
 		shift
 	done
