@@ -96,9 +96,14 @@ gi_setup() {
 	\git config --local --replace-all user.name  "$name"  || ok=false
 	\git config --local --replace-all user.email "$email" || ok=false
 	if $ok; then
-		 echo "Done."; return 0
+		echo "Done. Now use: $name <$email>"
+		return 0
 	fi
 	echo "FAIL"; return 1
+}
+
+gi_whoami() {
+	printf '%s <%s>\n' "$(\git config --get 'user.name')" "$(\git config --get 'user.email')"
 }
 
 gi_check() {
@@ -106,10 +111,9 @@ gi_check() {
 	_git_dir && \
 	git shortlog -se \
 	| while read -r c line; do
-		printf '**%s**\n' "$line"
-		local name="${line%%<*}"
+		local name="${line%% <*}"
 		local email="${line#*<}"
-		email="${line%>}"
+		email="${email%>}"
 		printf '[%s] [%s]\n' "$name" "$email"
 	done
 }
@@ -129,6 +133,7 @@ main() {
 			--get)		shift; gi_get   "$1"; shift; return 0 ;;
 			--use|--setup)	shift; gi_setup "$1"; return $? ;;
 			--check)	shift; gi_check ;;
+			--whoami)	shift; gi_whoami ; return $? ;;
 		esac
 		shift
 	done
