@@ -1,0 +1,136 @@
+#/bin/sh
+
+# Util to manage your multiple identities on git.
+# Also help to search and rewrite git history to try to hide some identities...
+
+
+errormsg() { echo >&2 "$0:ERROR: $1"; }
+
+# _git_dir [<dir>]
+_git_dir() {
+	if [ -n "$1" ]; then
+		GIT_DIR_FOUND="$([ -d "$1" ] && cd -- "$1" 2>&- && git rev-parse --show-toplevel 2>&-)"
+	else
+		GIT_DIR_FOUND="$(git rev-parse --show-toplevel 2>&-)"
+	fi
+}
+
+
+git_config_add() { \git config --global --add "$1" "$2"; }
+git_config_getall() { \git config --global --get-all "$1" "$2"; }
+
+gi_list() {
+	\git config --global --get-regexp '^identity.(name|email)$' \
+	| while read -r k v; do
+		case "$k" in
+			*.name) printf '%10s ' "$v" ;;
+			*.email) printf '<%s>\n' "$v" ;;
+		esac
+	done \
+	| {
+	local i=1
+	while read -r line; do
+		printf '%d: %s\n' "$i" "$line"
+		i=$(($i+1))
+	done
+	}
+}
+
+gi_count() {
+	last=$(\git config --global --get-all 'identity.name' | wc -l)
+	echo "${last:-0}"
+}
+gi_add() {
+	local name="$1";shift
+	local email="$1";shift
+	if [ -z "$name" ] || [ -z "$email" ]; then
+		errormsg "name or email is empty"
+		return 1
+	fi
+	# TODO: check if already exists ?
+	local ok=true
+	git_config_add "identity.name"  "$name"  || ok=false
+	git_config_add "identity.email" "$email" || ok=false
+	if $ok; then
+		echo ok;return 0
+	fi
+	echo "FAIL"; return 1
+}
+
+getLineN() {
+	local n="$1";shift
+	local i=1
+	while read -r line; do
+		if [ $i -eq $n ]; then
+			printf %s\\n "$line"
+			break
+		fi
+		i=$(($i+1))
+	done
+}
+
+gi_get() {
+	local n="$1";shift
+	local  name="$(gi_rawget 'name'  "$n")"
+	local email="$(gi_rawget 'email' "$n")"
+	if [ -n "$name" ] || [ -n "$email" ]; then
+		printf '%s <%s>\n' "$name" "$email"
+	fi
+}
+gi_rawget() {
+	local k="$1";shift
+	local n="$1";shift
+	git_config_getall --get-all 'identity.'"$k" | getLineN "$n"
+}
+
+gi_setup() {
+	local     n="$1";shift
+	local  name="$(gi_rawget 'name'  "$n")"
+	local email="$(gi_rawget 'email' "$n")"
+	if [ -z "$name" ] || [ -z "$email" ]; then
+		errormsg "Fail to get identity $n : $name <$email>"
+		return 1
+	fi
+
+	local ok=true
+	\git config --local --replace-all user.name  "$name"  || ok=false
+	\git config --local --replace-all user.email "$email" || ok=false
+	if $ok; then
+		 echo "Done."; return 0
+	fi
+	echo "FAIL"; return 1
+}
+
+gi_check() {
+	local GIT_DIR_FOUND
+	_git_dir && \
+	git shortlog -se \
+	| while read -r c line; do
+		printf '**%s**\n' "$line"
+		local name="${line%%<*}"
+		local email="${line#*<}"
+		email="${line%>}"
+		printf '[%s] [%s]\n' "$name" "$email"
+	done
+}
+
+main() {
+	while [ $# -gt 0 ]; do
+		local cmd="$1"
+		case "$cmd" in
+			--*) ;;
+			-*) ;;
+			*) cmd="--$cmd"
+		esac
+		case "$cmd" in
+			--list)		shift; gi_list ; return 0 ;;
+			--add)		shift; gi_add   "$1" "$2" ; shift 2; return 0 ;; # allow --add x x --add y y ... ?
+			--count)	shift; gi_count           ; return 0 ;;
+			--get)		shift; gi_get   "$1"; shift; return 0 ;;
+			--use|--setup)	shift; gi_setup "$1"; return $? ;;
+			--check)	shift; gi_check ;;
+		esac
+		shift
+	done
+}
+main "$@"
