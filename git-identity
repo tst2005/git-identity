@@ -1,8 +1,9 @@
-#/bin/sh
+#!/bin/sh
 
 # Util to manage your multiple identities on git.
 # Also help to search and rewrite git history to try to hide some identities...
 
+if [ -z "$__GIT_AUTOCONFIG__" ]; then
 
 errormsg() { echo >&2 "$0:ERROR: $1"; }
 
@@ -15,6 +16,7 @@ _git_dir() {
 	fi
 }
 
+fi
 
 git_config_add() { \git config --global --add "$1" "$2"; }
 git_config_getall() { \git config --global --get-all "$1" "$2"; }
@@ -118,7 +120,7 @@ gi_check() {
 	done
 }
 
-main() {
+_git_identity() {
 	while [ $# -gt 0 ]; do
 		local cmd="$1"
 		case "$cmd" in
@@ -141,4 +143,15 @@ main() {
 		shift
 	done
 }
-main "$@"
+
+## Do not run if loaded by git autoconfig
+if [ -n "$__GIT_AUTOCONFIG__" ]; then
+	# dash does not support minus in function name, use alias as fallback
+	if ( eval 'with-minus() { :; }'; exit $? ) 2>&-; then
+		eval 'git-identity() { _git_identity "$@"; }'
+	else
+		alias git-identity=_git_identity
+	fi
+else
+	_git_identity "$@"
+fi
