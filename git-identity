@@ -1,4 +1,9 @@
-#!/bin/sh
+#! /bin/sh
+
+# ---------------------------------------------------------------------
+# -- Git Identity - A multiple identitiy manager for git --
+# -- Copyright (c) 2014-2015 TsT worldmaster.fr <tst2005@gmail.com> --
+# ---------------------------------------------------------------------
 
 # Util to manage your multiple identities on git.
 # Also help to search and rewrite git history to try to hide some identities...
@@ -17,6 +22,19 @@ _git_dir() {
 }
 
 fi
+
+_git_identity_help() {
+	echo "Usage: git-identity <command>"
+	echo 'Commands:'
+	echo '  --list|-l'
+	echo '  --add'
+	echo '  --count'
+	echo '  --get <n>'
+	echo '  --use|--setup <n>'
+	echo '  --check|-c'
+	echo '  --whoami'
+
+}
 
 git_config_add() { \git config --global --add "$1" "$2"; }
 git_config_getall() { \git config --global --get-all "$1" "$2"; }
@@ -129,16 +147,53 @@ _git_identity() {
 			*) cmd="--$cmd"
 		esac
 		case "$cmd" in
-			--ls) cmd="--list" ;;
+			--ls) cmd="--list";;
 		esac
 		case "$cmd" in
-			--list)		gi_list ; return 0 ;;
-			--add)		gi_add   "$2" "$3"   ; shift 2; return 0 ;; # allow --add x x --add y y ... ?
-			--count)	gi_count             ; return 0 ;;
-			--get)		gi_get   "$2"; shift;  return 0 ;;
-			--use|--setup)	gi_setup "$2"; shift;           ;;
-			--check)	gi_check     ;        return $? ;;
-			--whoami)	gi_whoami ;;
+			-h|--help)
+				_git_identity_help
+				exit 0
+			;;
+			-l|--list)
+				gi_list
+				return 0
+			;;
+			--add)	#TODO: allow --add x x --add y y ... ?
+				gi_add "$2" "$3";
+				shift 2;
+				return 0
+			;;
+			--count)
+				gi_count
+				return 0
+			;;
+			--get)
+				if [ -z "$2" ]; then
+					errormsg "missing argument #1"
+					return 1
+				fi
+				gi_get "${2:-}"
+				shift
+				return 0
+			;;
+			--use|--setup)
+				if [ -z "$2" ]; then
+					errormsg "missing argument #1"
+					return 1
+				fi
+				gi_setup "$2"
+				shift
+			;;
+			-c|--check)
+				gi_check
+				return $?
+			;;
+			-w|--whoami)
+				gi_whoami
+			;;
+			*)
+				errormsg "unknown command $1";
+				return 1;
 		esac
 		shift
 	done
