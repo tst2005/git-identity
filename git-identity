@@ -24,15 +24,15 @@ _git_dir() {
 fi
 
 _git_identity_help() {
-	echo "Usage: git-identity <command>"
+	echo "Usage: git-identity <command> [<arguments...>]"
 	echo 'Commands:'
-	echo '  --list|-l'
-	echo '  --add'
-	echo '  --count'
-	echo '  --get <n>'
-	echo '  --use|--setup <n>'
-	echo '  --check|-c'
-	echo '  --whoami'
+	echo '  list|-l'
+	echo '  add <name> <email>'
+	echo '  count'
+	echo '  get|show <n>'
+	echo '  use|setup <n>'
+	echo '  check|-c'
+	echo '  whoami'
 
 }
 
@@ -150,7 +150,7 @@ _git_identity() {
 			--ls) cmd="--list";;
 		esac
 		case "$cmd" in
-			-h|--help)
+			-h|--help|help)
 				_git_identity_help
 				exit 0
 			;;
@@ -159,6 +159,10 @@ _git_identity() {
 				return 0
 			;;
 			--add)	#TODO: allow --add x x --add y y ... ?
+				if [ $# -ne 3 ]; then
+					errormsg "missing argument"
+					return 1
+				fi
 				gi_add "$2" "$3";
 				shift 2;
 				return 0
@@ -167,7 +171,7 @@ _git_identity() {
 				gi_count
 				return 0
 			;;
-			--get)
+			--get|--show)
 				if [ -z "$2" ]; then
 					errormsg "missing argument #1"
 					return 1
